@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .input {
+    transition: all 0.2s ease-in-out;
+    @apply w-full ring-offset-0 ring-1 ring-divider outline-none border-none rounded-md bg-transparent px-4 py-2 shadow-sm focus:ring-2 hover:ring-2;
+  }
+  .button {
+    transition: all 0.2s ease-in-out;
+    @apply px-3 py-2 rounded-md outline-none ring-slate-300 focus:ring-1 hover:ring-1;
+  }
+  .button-primary {
+    @apply button;
+    @apply bg-primary ring-primary text-slate-100;
+  }
+  .cursor {
+    font-weight: 100;
+    width: 3px;
+    height: 24px;
+    background-color: theme("colors.primary");
+    -webkit-animation: 1s blink step-end infinite;
+    -moz-animation: 1s blink step-end infinite;
+    -ms-animation: 1s blink step-end infinite;
+    -o-animation: 1s blink step-end infinite;
+    animation: 1s blink step-end infinite;
+    transition: all 0.2s linear;
+  }
+
+  @keyframes "blink" {
+    from,
+    to {
+      background-color: transparent;
+      opacity: 0;
+      font-size: 0px;
+    }
+    50% {
+      background-color: theme("colors.primary");
+      opacity: 1;
+      font-size: 16px;
+    }
+  }
+}
