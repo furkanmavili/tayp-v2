@@ -4,6 +4,8 @@ import { storeToRefs } from "pinia";
 import { ref, onMounted, computed, watch, onUpdated, onBeforeUpdate, onActivated } from "vue";
 import { parse } from "@vue/compiler-dom";
 
+const LETTER_HEIGHT = 36;
+
 async function importLanguage(fileName) {
   const json = await import(`../assets/languages/${fileName}.json`);
   return json;
@@ -11,10 +13,12 @@ async function importLanguage(fileName) {
 const words = ref([]);
 const cursor = ref(0);
 const listRef = ref(null);
-const cursorLeft = ref(0);
-const cursorTop = ref(8);
-const wordRefs = ref([]);
+const cursorLeft = ref(0); // cursor left offset
+const cursorTop = ref(8); // cursor top offset
+const wordRefs = ref([]); // takes all word divs ref
+const letterRefs = ref([]);
 
+// returns word list with letters like ['h', 'e', 'l', 'l', 'o', ' ']
 const splittedWords = computed(() => {
   let splittedWords = [];
   words.value.forEach((word) => {
@@ -25,6 +29,8 @@ const splittedWords = computed(() => {
   });
   return splittedWords;
 });
+
+// it keeps track of current word index
 const currentWordIndex = computed(() => {
   let emptyCount = 0;
   splittedWords.value.slice(0, cursor.value).forEach((item) => {
@@ -32,6 +38,8 @@ const currentWordIndex = computed(() => {
   });
   return emptyCount;
 });
+
+// returns array of words with letters; [['h', 'e', 'l', 'l', 'o', '&nbsp;']]
 const parsedWords = computed(() => {
   return words.value.map((word) => [...word.split(""), "&nbsp;"]);
 });
@@ -68,12 +76,28 @@ watch(cursor, (newCursor, _) => {
   const wordOffsetLeft = currentWord.offsetLeft;
   const wordOffsetTop = currentWord.offsetTop;
   const currentLetter = Array.from(listRef.value.querySelectorAll(".letter"))[newCursor];
+
+  // letters left offset always relative to parent word div, so we need to calculate with
+  // current word left offset + current letter left offset
   cursorLeft.value = currentLetter.offsetLeft + wordOffsetLeft;
-  console.log(cursor.value);
-  if (currentLetter.offsetTop === 0) {
-    cursorTop.value = 8 + wordOffsetTop;
+
+  // console.log(wordOffsetTop);
+  // if word is on first row
+  if (wordOffsetTop === 0) {
+    cursorTop.value = wordOffsetTop + 8;
   } else {
     cursorTop.value = currentLetter.offsetTop + wordOffsetTop + 8;
+  }
+
+  // if cursor on begining of last row, delete first row
+  if (wordOffsetTop === LETTER_HEIGHT * 2 && wordOffsetLeft === 0 && currentLetter.offsetLeft === 0) {
+    const reversedWordRefs = wordRefs.value.reverse();
+    for (let i = 0; i < reversedWordRefs.length; i++) {
+      if (reversedWordRefs[i].offsetTop === 0) {
+        reversedWordRefs[i].style.display = "none";
+        cursorTop.value = LETTER_HEIGHT + 8;
+      }
+    }
   }
 });
 </script>
@@ -83,7 +107,8 @@ watch(cursor, (newCursor, _) => {
   <div
     :ref="(el) => (listRef = el)"
     id="words"
-    class="flex flex-wrap text-2xl select-none h-[120px] leading-relaxed overflow-hidden"
+    :style="{ height: LETTER_HEIGHT * 3 + 'px' }"
+    class="flex flex-wrap text-2xl select-none leading-normal overflow-hidden"
   >
     <div
       :ref="
