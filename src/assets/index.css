@@ -25,7 +25,7 @@
     -ms-animation: 1s blink step-end infinite;
     -o-animation: 1s blink step-end infinite;
     animation: 1s blink step-end infinite;
-    transition: all 0.2s linear;
+    transition: all 0.15s linear;
   }
 
   @keyframes "blink" {
