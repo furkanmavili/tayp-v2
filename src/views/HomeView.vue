@@ -3,9 +3,7 @@ import Playground from "../components/Playground.vue";
 </script>
 
 <template>
-  <main>
-    <div>
-      <Playground />
-    </div>
+  <main class="h-full grid place-items-center">
+    <Playground />
   </main>
 </template>

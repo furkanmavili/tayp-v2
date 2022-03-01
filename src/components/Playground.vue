@@ -1,8 +1,8 @@
 <script setup>
 import { useLanguageStore } from "../stores/language";
+import { useScoreStore } from "../stores/score";
 import { ref, onMounted, computed, watch, onUpdated, onBeforeUpdate, onActivated } from "vue";
 import { getRandomWords, importWords } from "../utils/words";
-import { parse } from "@vue/compiler-dom";
 
 const LETTER_HEIGHT = 36;
 const IGNORE_KEYS = ["Shift", "CapsLock", "Tab", "Enter", "Alt"];
@@ -16,6 +16,9 @@ const cursorLeft = ref(0); // cursor left offset
 const cursorTop = ref(8); // cursor top offset
 const wordRefs = ref([]); // takes all word divs ref
 const letterRefs = ref([]);
+const startTimer = ref(false);
+const timer = ref(60);
+
 const result = ref({
   correct: 0,
   wrong: 0,
@@ -23,8 +26,9 @@ const result = ref({
   raw_wpm: null,
 });
 
-const store = useLanguageStore();
-store.$subscribe(
+const scoreStore = useScoreStore();
+const languageStore = useLanguageStore();
+languageStore.$subscribe(
   async (mutation, state) => {
     const json = await importWords(state.selectedLanguage);
     words.value = getRandomWords(json.words, 300);
@@ -63,9 +67,10 @@ const parsedWords = computed(() => {
 });
 
 onMounted(async () => {
-  const json = await importWords(store.selectedLanguage);
+  const json = await importWords(languageStore.selectedLanguage);
   words.value = getRandomWords(json.words, 300);
   // TODO: find a way to remove this listener on unmount
+  console.log("added listener");
   window.addEventListener("keydown", (e) => {
     if (IGNORE_KEYS.includes(e.key)) return;
     // if (e.ctrlKey && e.key === "Backspace") {
@@ -74,15 +79,21 @@ onMounted(async () => {
     if (e.key === "Backspace") {
       if (cursor.value === 0) return;
       cursor.value--;
+      clearClasses();
     } else {
+      if (!startTimer.value) {
+        startTimer.value = !startTimer.value;
+      }
       if (cursor.value > splittedWords.value.length) return;
       // if (splittedWords.value[cursor.value] === " " && e.key !== " ") return;
       if (e.key === splittedWords.value[cursor.value]) {
         currentLetter.value.classList.add(...CORRECT_CLASS);
         currentLetter.value.classList.remove(...WRONG_CLASS);
+        scoreStore.addCorrect();
       } else {
         currentLetter.value.classList.add(...WRONG_CLASS);
         currentLetter.value.classList.remove(...CORRECT_CLASS);
+        scoreStore.addWrong();
       }
       cursor.value++;
     }
@@ -120,38 +131,55 @@ watch(cursor, (newCursor, _) => {
   }
 });
 
+watch(startTimer, () => {
+  timer.value -= 1;
+  const interval = setInterval(() => {
+    console.log(timer.value);
+    if (timer.value === 0) {
+      console.log("correct:", scoreStore.correct);
+      console.log("wrong:", scoreStore.wrong);
+      clearInterval(interval);
+      return;
+    }
+    timer.value -= 1;
+  }, 1000);
+});
+
 function clearClasses() {
   currentLetter.value.classList.remove(...CORRECT_CLASS, ...WRONG_CLASS);
 }
 </script>
 
 <template>
-  <div @click="store.changeLanguage('turkish')">change to tr</div>
-  <div
-    :ref="(el) => (listRef = el)"
-    id="words"
-    :style="{ height: LETTER_HEIGHT * 3 + 'px' }"
-    class="flex flex-wrap text-2xl select-none leading-normal overflow-hidden"
-  >
+  <div>
+    <!-- <div @click="store.changeLanguage('turkish')">change to tr</div> -->
+    <div class="text-primary font-semibold text-xl">{{ timer }}</div>
     <div
-      :ref="
-        (el) => {
-          wordRefs[index] = el;
-        }
-      "
-      class="word flex text-gray-400"
-      v-for="(word, index) in parsedWords"
+      :ref="(el) => (listRef = el)"
+      id="words"
+      :style="{ height: LETTER_HEIGHT * 3 + 'px' }"
+      class="flex flex-wrap text-2xl select-none leading-normal overflow-hidden"
     >
-      <div class="letter" v-for="letter in word" v-html="letter"></div>
+      <div
+        :ref="
+          (el) => {
+            wordRefs[index] = el;
+          }
+        "
+        class="word flex text-gray-400"
+        v-for="(word, index) in parsedWords"
+      >
+        <div class="letter" v-for="letter in word" v-html="letter"></div>
+      </div>
+      <div
+        class="cursor absolute animate-none"
+        :id="cursor"
+        :style="{
+          left: cursorLeft + 'px',
+          top: cursorTop + 'px',
+          display: cursor === parsedWords.length ? 'none' : 'block',
+        }"
+      ></div>
     </div>
-    <div
-      class="cursor absolute animate-none"
-      :id="cursor"
-      :style="{
-        left: cursorLeft + 'px',
-        top: cursorTop + 'px',
-        display: cursor === parsedWords.length ? 'none' : 'block',
-      }"
-    ></div>
   </div>
 </template>
