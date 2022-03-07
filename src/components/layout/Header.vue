@@ -2,15 +2,28 @@
 import { onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import Modal from "../Modal.vue";
+import { useOptions } from "../../stores/options";
 
-const language = ref("language")
-const mode = ref("time");
+const options = useOptions();
+const language = ref(options.language);
+const mode = ref(options.mode);
+const punctations = ref(options.punctations);
+const numbers = ref(options.numbers);
 
 const availableLanguages = ref([]);
 onMounted(async () => {
   const json = await import("../../assets/languages/_list.json");
   availableLanguages.value = json.langs;
 });
+
+function onSubmit() {
+  options.$patch({
+    mode: mode.value,
+    language: language.value,
+    punctations: punctations.value,
+    numbers: numbers.value
+  })
+}
 </script>
 
 <template>
@@ -77,7 +90,7 @@ onMounted(async () => {
         </template>
 
         <template v-slot:body>
-          <div class="flex flex-col space-y-4">
+          <form @submit.prevent="onSubmit" class="flex flex-col space-y-4">
             <div>
               <div>Language</div>
               <select
@@ -91,25 +104,37 @@ onMounted(async () => {
             <div>
               <div>Mode:</div>
               <div class="flex items-center">
-                <input class="mr-2 text-primary ring-0" type="radio" id="one" value="time" v-model="mode" />
-                <label for="one">Time</label>
+                <input class="mr-2 text-primary ring-0" type="radio" id="time" value="time" v-model="mode" />
+                <label for="time">Time</label>
               </div>
               <div class="flex items-center">
-                <input class="mr-2 text-primary ring-0" type="radio" id="two" value="word" v-model="mode" />
-                <label for="two">Word</label>
+                <input class="mr-2 text-primary ring-0" type="radio" id="word" value="word" v-model="mode" />
+                <label for="word">Word</label>
               </div>
-
             </div>
-  
 
-          </div>
-        </template>
+            <div class="flex items-center gap-2">
+              <input
+                class="text-primary focus:border-0 focus:outline-none focus:ring-0"
+                id="punctations"
+                type="checkbox"
+                v-model="punctations"
+              />
+              <label for="punctations">Punctations</label>
+              <input
+                class="text-primary focus:border-0 focus:outline-none focus:ring-0"
+                id="numbers"
+                type="checkbox"
+                v-model="numbers"
+              />
+              <label for="numbers">Numbers</label>
+            </div>
 
-        <template v-slot:footer>
-          <div class="mt-4 flex justify-end gap-2">
-            <button class="button" @click="$refs.optionsModal.closeModal()">Cancel</button>
-            <button class="button button-primary" @click="$refs.optionsModal.closeModal()">Save</button>
-          </div>
+            <div class="mt-4 flex justify-end gap-2">
+              <button type="reset" class="button" @click="$refs.optionsModal.closeModal()">Cancel</button>
+              <button type="submit" class="button button-primary" @click="$refs.optionsModal.closeModal()">Save</button>
+            </div>
+          </form>
         </template>
       </modal>
     </div>

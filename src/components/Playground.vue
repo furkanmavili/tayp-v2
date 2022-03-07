@@ -1,16 +1,16 @@
 <script setup>
-import { useLanguageStore } from "../stores/language";
 import { useScoreStore } from "../stores/score";
 import { ref, onMounted, computed, watch, onUpdated, onBeforeUpdate, onActivated } from "vue";
 import { getRandomWords, importWords } from "../utils/words";
+import { useOptions } from "../stores/options";
 
 const LETTER_HEIGHT = 36;
 const IGNORE_KEYS = ["Shift", "CapsLock", "Tab", "Enter", "Alt"];
 const CORRECT_CLASS = "text-gray-950 dark:text-slate-100".split(" ");
 const WRONG_CLASS = "text-red-400 border-red-400".split(" ");
-const TIMER_INITIAL = 30;
 const CURSOR_TOP_PADDING = 8;
-const TOTAL_WORD = 300;
+const TOTAL_WORD = 200;
+const options = useOptions()
 
 const words = ref([]);
 const cursor = ref(0);
@@ -19,16 +19,14 @@ const cursorLeft = ref(0); // cursor left offset
 const cursorTop = ref(CURSOR_TOP_PADDING); // cursor top offset
 const wordRefs = ref([]); // takes all word divs ref
 const startTimer = ref(false);
-const timer = ref(TIMER_INITIAL);
+const timer = ref(options.timeValue);
 
 const scoreStore = useScoreStore();
-const languageStore = useLanguageStore();
-languageStore.$subscribe(
+options.$subscribe(
   async (mutation, state) => {
-    const json = await importWords(state.selectedLanguage);
-    words.value = getRandomWords(json.words, TOTAL_WORD);
+    restart()
   },
-  { detached: true }
+  { detached: false }
 );
 
 // returns word list with letters like ['h', 'e', 'l', 'l', 'o', ' ']
@@ -63,7 +61,7 @@ const parsedWords = computed(() => {
 });
 
 onMounted(async () => {
-  const json = await importWords(languageStore.selectedLanguage);
+  const json = await importWords(options.language);
   words.value = getRandomWords(json.words, TOTAL_WORD);
   // TODO: find a way to remove this listener on unmount
   window.addEventListener("keydown", (e) => {
@@ -142,7 +140,7 @@ watch(startTimer, () => {
 });
 
 function onFinish() {
-  const wpm = ((scoreStore.correct / 5) * 60) / TIMER_INITIAL;
+  const wpm = ((scoreStore.correct / 5) * 60) / options.timeValue;
   scoreStore.setWpm(wpm);
   scoreStore.setShowResults(true);
 }
@@ -150,8 +148,8 @@ function onFinish() {
 async function restart() {
   startTimer.value = false;
   scoreStore.reset();
-  timer.value = TIMER_INITIAL;
-  const json = await importWords(languageStore.selectedLanguage);
+  timer.value = options.timeValue;
+  const json = await importWords(options.language);
   words.value = getRandomWords(json.words, TOTAL_WORD);
   cursor.value = 0;
   wordRefs.value.forEach((word) => {
@@ -169,8 +167,7 @@ function clearClasses() {
 
 <template>
   <div>
-    <div>wpm:{{ scoreStore.wpm }}</div>
-    <!-- <div @click="store.changeLanguage('turkish')">change to tr</div> -->
+     <!-- <div @click="store.changeLanguage('turkish')">change to tr</div> -->
     <div class="text-primary font-semibold text-xl">{{ timer }}</div>
     <div
       id="words"
