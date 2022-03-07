@@ -8,30 +8,25 @@ const LETTER_HEIGHT = 36;
 const IGNORE_KEYS = ["Shift", "CapsLock", "Tab", "Enter", "Alt"];
 const CORRECT_CLASS = "text-gray-950 dark:text-slate-100".split(" ");
 const WRONG_CLASS = "text-red-400 border-red-400".split(" ");
+const TIMER_INITIAL = 30;
+const CURSOR_TOP_PADDING = 8;
+const TOTAL_WORD = 300;
 
 const words = ref([]);
 const cursor = ref(0);
-const listRef = ref(null);
-const cursorLeft = ref(0); // cursor left offset
-const cursorTop = ref(8); // cursor top offset
-const wordRefs = ref([]); // takes all word divs ref
 const letterRefs = ref([]);
+const cursorLeft = ref(0); // cursor left offset
+const cursorTop = ref(CURSOR_TOP_PADDING); // cursor top offset
+const wordRefs = ref([]); // takes all word divs ref
 const startTimer = ref(false);
-const timer = ref(60);
-
-const result = ref({
-  correct: 0,
-  wrong: 0,
-  wpm: null,
-  raw_wpm: null,
-});
+const timer = ref(TIMER_INITIAL);
 
 const scoreStore = useScoreStore();
 const languageStore = useLanguageStore();
 languageStore.$subscribe(
   async (mutation, state) => {
     const json = await importWords(state.selectedLanguage);
-    words.value = getRandomWords(json.words, 300);
+    words.value = getRandomWords(json.words, TOTAL_WORD);
   },
   { detached: true }
 );
@@ -51,6 +46,7 @@ const splittedWords = computed(() => {
 // it keeps track of current word index
 const currentWordIndex = computed(() => {
   let emptyCount = 0;
+
   splittedWords.value.slice(0, cursor.value).forEach((item) => {
     if (item === " ") emptyCount++;
   });
@@ -58,7 +54,7 @@ const currentWordIndex = computed(() => {
 });
 
 const currentLetter = computed(() => {
-  return Array.from(listRef.value.querySelectorAll(".letter"))[cursor.value];
+  return letterRefs.value[cursor.value];
 });
 
 // returns array of words with letters; [['h', 'e', 'l', 'l', 'o', '&nbsp;']]
@@ -68,21 +64,17 @@ const parsedWords = computed(() => {
 
 onMounted(async () => {
   const json = await importWords(languageStore.selectedLanguage);
-  words.value = getRandomWords(json.words, 300);
+  words.value = getRandomWords(json.words, TOTAL_WORD);
   // TODO: find a way to remove this listener on unmount
-  console.log("added listener");
   window.addEventListener("keydown", (e) => {
     if (IGNORE_KEYS.includes(e.key)) return;
-    // if (e.ctrlKey && e.key === "Backspace") {
-    //   cursor.value -= cursor.value - splittedWords.value.slice(0, cursor.value).lastIndexOf(" ") - 2;
-    // }
     if (e.key === "Backspace") {
       if (cursor.value === 0) return;
       cursor.value--;
       clearClasses();
     } else {
       if (!startTimer.value) {
-        startTimer.value = !startTimer.value;
+        startTimer.value = true;
       }
       if (cursor.value > splittedWords.value.length) return;
       // if (splittedWords.value[cursor.value] === " " && e.key !== " ") return;
@@ -101,6 +93,7 @@ onMounted(async () => {
 });
 
 onBeforeUpdate(() => {
+  letterRefs.value = [];
   wordRefs.value = [];
 });
 
@@ -108,42 +101,66 @@ watch(cursor, (newCursor, _) => {
   const currentWord = wordRefs.value[currentWordIndex.value];
   const wordOffsetLeft = currentWord.offsetLeft;
   const wordOffsetTop = currentWord.offsetTop;
-  const currentLetter = Array.from(listRef.value.querySelectorAll(".letter"))[newCursor];
   // letters left offset always relative to parent word div, so we need to calculate with
   // current word left offset + current letter left offset
-  cursorLeft.value = currentLetter.offsetLeft + wordOffsetLeft;
+  cursorLeft.value = currentLetter.value.offsetLeft + wordOffsetLeft;
 
   // if word is on first row
   if (wordOffsetTop === 0) {
-    cursorTop.value = wordOffsetTop + 8;
+    cursorTop.value = wordOffsetTop + CURSOR_TOP_PADDING;
   } else {
-    cursorTop.value = currentLetter.offsetTop + wordOffsetTop + 8;
+    cursorTop.value = currentLetter.value.offsetTop + wordOffsetTop + CURSOR_TOP_PADDING;
   }
   // if cursor on begining of last row, delete first row
-  if (wordOffsetTop === LETTER_HEIGHT * 2 && wordOffsetLeft === 0 && currentLetter.offsetLeft === 0) {
+  if (wordOffsetTop === LETTER_HEIGHT * 2 && wordOffsetLeft === 0 && currentLetter.value.offsetLeft === 0) {
     const reversedWordRefs = wordRefs.value.reverse();
     for (let i = 0; i < reversedWordRefs.length; i++) {
       if (reversedWordRefs[i].offsetTop === 0) {
         reversedWordRefs[i].style.display = "none";
-        cursorTop.value = LETTER_HEIGHT + 8;
+        cursorTop.value = LETTER_HEIGHT + CURSOR_TOP_PADDING;
       }
     }
   }
 });
 
 watch(startTimer, () => {
+  if (!startTimer.value) return;
   timer.value -= 1;
-  const interval = setInterval(() => {
-    console.log(timer.value);
+  const interval = setInterval(async () => {
+    if (!startTimer.value) {
+      clearInterval(interval);
+      return;
+    }
     if (timer.value === 0) {
-      console.log("correct:", scoreStore.correct);
-      console.log("wrong:", scoreStore.wrong);
+      onFinish();
+      await restart();
       clearInterval(interval);
       return;
     }
     timer.value -= 1;
   }, 1000);
 });
+
+function onFinish() {
+  const wpm = ((scoreStore.correct / 5) * 60) / TIMER_INITIAL;
+  scoreStore.setWpm(wpm);
+  scoreStore.setShowResults(true);
+}
+
+async function restart() {
+  startTimer.value = false;
+  scoreStore.reset();
+  timer.value = TIMER_INITIAL;
+  const json = await importWords(languageStore.selectedLanguage);
+  words.value = getRandomWords(json.words, TOTAL_WORD);
+  cursor.value = 0;
+  wordRefs.value.forEach((word) => {
+    word.style.display = "flex";
+  });
+  letterRefs.value.forEach((letter) => {
+    letter.classList.remove(...CORRECT_CLASS, ...WRONG_CLASS);
+  });
+}
 
 function clearClasses() {
   currentLetter.value.classList.remove(...CORRECT_CLASS, ...WRONG_CLASS);
@@ -152,10 +169,10 @@ function clearClasses() {
 
 <template>
   <div>
+    <div>wpm:{{ scoreStore.wpm }}</div>
     <!-- <div @click="store.changeLanguage('turkish')">change to tr</div> -->
     <div class="text-primary font-semibold text-xl">{{ timer }}</div>
     <div
-      :ref="(el) => (listRef = el)"
       id="words"
       :style="{ height: LETTER_HEIGHT * 3 + 'px' }"
       class="flex flex-wrap text-2xl select-none leading-normal overflow-hidden"
@@ -169,7 +186,17 @@ function clearClasses() {
         class="word flex text-gray-400"
         v-for="(word, index) in parsedWords"
       >
-        <div class="letter" v-for="letter in word" v-html="letter"></div>
+        <div
+          class="letter"
+          v-for="(letter, letterIndex) in word"
+          :ref="
+            (el) => {
+              const lindex = parsedWords.slice(0, index).reduce((total, ch) => (total += ch.length), 0) + letterIndex;
+              letterRefs[lindex] = el;
+            }
+          "
+          v-html="letter"
+        ></div>
       </div>
       <div
         class="cursor absolute animate-none"
@@ -180,6 +207,7 @@ function clearClasses() {
           display: cursor === parsedWords.length ? 'none' : 'block',
         }"
       ></div>
+      <button @click="">Retry</button>
     </div>
   </div>
 </template>
