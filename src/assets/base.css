@@ -21,3 +21,7 @@ body {
 #words {
   font-family: "Inconsolata", monospace;
 }
+
+label {
+  user-select: none;
+}
