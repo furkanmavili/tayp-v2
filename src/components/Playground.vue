@@ -20,6 +20,7 @@ const cursorTop = ref(CURSOR_TOP_PADDING); // cursor top offset
 const wordRefs = ref([]); // takes all word divs ref
 const startTimer = ref(false);
 const timer = ref(options.timeValue);
+const mobileInput = ref(null)
 
 const scoreStore = useScoreStore();
 options.$subscribe(
@@ -91,6 +92,7 @@ onMounted(async () => {
 });
 
 onBeforeUpdate(() => {
+  mobileInput.value.focus()
   letterRefs.value = [];
   wordRefs.value = [];
 });
@@ -205,6 +207,7 @@ function clearClasses() {
         }"
       ></div>
       <button @click="">Retry</button>
+      <input class="hidden" ref="mobileInput"/>
     </div>
   </div>
 </template>
