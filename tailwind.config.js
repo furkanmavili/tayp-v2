@@ -9,11 +9,14 @@ module.exports = {
       colors: {
         primary: "#42b883",
         gray: {
+          850: "hsl(0, 0%, 13%)",
           950: "hsl(0, 0%, 10%)",
         },
         divider: "hsl(255, 0%, 60%)",
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
 };
