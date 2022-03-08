@@ -16,6 +16,9 @@ export const useScoreStore = defineStore({
     },
     calculatedRawWpm(state) {
       return (timeValue) =>  Math.floor((((state.correct + wrong) / 5) * 60) / timeValue)
+    },
+    getAccuracy(state) {
+      return Math.floor(state.correct / (state.correct + state.wrong) * 100)
     }
   },
   actions: {
