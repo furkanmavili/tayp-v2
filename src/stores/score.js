@@ -10,12 +10,20 @@ const initialState = {
 export const useScoreStore = defineStore({
   id: "score",
   state: () => initialState,
+  getters: {
+    calculatedWpm(state) {
+      return (timeValue) => Math.floor(((state.correct / 5) * 60) / timeValue)
+    },
+    calculatedRawWpm(state) {
+      return (timeValue) =>  Math.floor((((state.correct + wrong) / 5) * 60) / timeValue)
+    }
+  },
   actions: {
     reset() {
       this.correct = 0;
       this.wrong = 0;
-      // this.wpm = null;
-      // this.raw_wpm = null;
+      this.wpm = null;
+      this.raw_wpm = null;
       this.show_results = false;
     },
     addCorrect() {
