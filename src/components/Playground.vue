@@ -169,7 +169,8 @@ function onFinish() {
   }, 500);
 }
 
-async function restart(repeat) {
+async function restart(repeat, event) {
+  event.target.blur()
   startTimer.value = false;
   scoreStore.reset();
   timer.value = options.timeValue;
@@ -185,6 +186,7 @@ async function restart(repeat) {
     letter.classList.remove(...CORRECT_CLASS, ...WRONG_CLASS);
   });
   cursor.value = 0;
+  console.log('hei')
 }
 
 function clearClasses() {
@@ -244,7 +246,7 @@ function clearClasses() {
       <div class="flex"></div>
     </div>
     <div class="flex justify-center mt-6">
-      <button @click="restart(false)" class="button" title="next practice">
+      <button @click="restart(false, $event)" class="button" title="next practice">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="h-6 w-6 stroke-current"
@@ -258,7 +260,7 @@ function clearClasses() {
           <path d="M14 5v14l8 -7z" />
         </svg>
       </button>
-      <button @click="restart(true)" class="button" title="repeat">
+      <button @click="restart(true, $event)" class="button" title="repeat">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="h-6 w-6 stroke-current"
