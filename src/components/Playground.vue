@@ -59,17 +59,17 @@ const parsedWords = computed(() => {
 });
 
 const onKeyDown = (e) => {
-  if (IGNORE_KEYS.includes(e.key)) return;
+  if (IGNORE_KEYS.includes(e.key) || timer.value === 0) return;
   if (e.key === "Backspace") {
     if (cursor.value === 0) return;
     if (splittedWords.value[cursor.value - 1] === " ") return;
     cursor.value--;
     clearClasses();
   } else {
-    if (!startTimer.value) {
+    if (cursor.value > splittedWords.value.length) return;
+    if (!startTimer.value && timer.value > 0) {
       startTimer.value = true;
     }
-    if (cursor.value > splittedWords.value.length) return;
     if (splittedWords.value[cursor.value] === " " && e.key === " ") {
       currentWordIndex.value++;
     }
