@@ -9,7 +9,7 @@
   }
   .button {
     transition: all 0.2s ease-in-out;
-    @apply px-3 py-2 rounded-md outline-none ring-slate-300 focus:ring-1 hover:bg-primary/[.06] focus:outline-none;
+    @apply px-3 py-2 rounded-md outline-none hover:bg-primary/[.06] focus:outline-none;
   }
   .button > svg {
     pointer-events: none;
