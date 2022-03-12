@@ -1,6 +1,6 @@
 <script setup>
 import { useScoreStore } from "../stores/score";
-import { ref, onMounted, computed, watch, onUpdated, onBeforeUpdate, onActivated, onBeforeUnmount } from "vue";
+import { ref, onMounted, computed, watch, onBeforeUpdate } from "vue";
 import { getRandomWords, importWords } from "../utils/words";
 import { useOptions } from "../stores/options";
 import confetti from "canvas-confetti";
@@ -15,6 +15,7 @@ const options = useOptions();
 
 const words = ref([]);
 const cursor = ref(0);
+const currentWordIndex = ref(0);
 const letterRefs = ref([]);
 const cursorLeft = ref(0); // cursor left offset
 const cursorTop = ref(CURSOR_TOP_PADDING); // cursor top offset
@@ -26,10 +27,10 @@ const mobileInput = ref(null);
 const scoreStore = useScoreStore();
 
 options.$subscribe(
-  async (mutation, state) => {
-    restart();
+  async () => {
+    restart(false, null);
   },
-  { detached: false }
+  { detached: true }
 );
 
 // returns word list with letters like ['h', 'e', 'l', 'l', 'o', ' ']
@@ -42,16 +43,6 @@ const splittedWords = computed(() => {
     splittedWords.push(" ");
   });
   return splittedWords;
-});
-
-// it keeps track of current word index
-const currentWordIndex = computed(() => {
-  let emptyCount = 0;
-
-  splittedWords.value.slice(0, cursor.value).forEach((item) => {
-    if (item === " ") emptyCount++;
-  });
-  return emptyCount;
 });
 
 const currentLetter = computed(() => {
@@ -68,9 +59,10 @@ const parsedWords = computed(() => {
 });
 
 const onKeyDown = (e) => {
-  if (IGNORE_KEYS.includes(e.key) || scoreStore.show_results) return;
+  if (IGNORE_KEYS.includes(e.key)) return;
   if (e.key === "Backspace") {
     if (cursor.value === 0) return;
+    if (splittedWords.value[cursor.value - 1] === " ") return;
     cursor.value--;
     clearClasses();
   } else {
@@ -78,6 +70,9 @@ const onKeyDown = (e) => {
       startTimer.value = true;
     }
     if (cursor.value > splittedWords.value.length) return;
+    if (splittedWords.value[cursor.value] === " " && e.key === " ") {
+      currentWordIndex.value++;
+    }
     if (splittedWords.value[cursor.value] === " " && e.key !== " ") {
       scoreStore.addWrong();
       currentWord.value.classList.add("shake");
@@ -87,7 +82,6 @@ const onKeyDown = (e) => {
       return;
     }
 
-    // if (splittedWords.value[cursor.value] === " " && e.key !== " ") return;
     if (e.key === splittedWords.value[cursor.value]) {
       currentLetter.value.classList.add(...CORRECT_CLASS);
       currentLetter.value.classList.remove(...WRONG_CLASS);
@@ -149,7 +143,6 @@ watch(startTimer, () => {
       return;
     }
     if (timer.value === 0) {
-      scoreStore.setShowResults(true);
       clearInterval(interval);
       startTimer.value = false;
       onFinish();
@@ -170,7 +163,7 @@ function onFinish() {
 }
 
 async function restart(repeat, event) {
-  event.target.blur()
+  if (event) event.target.blur();
   startTimer.value = false;
   scoreStore.reset();
   timer.value = options.timeValue;
@@ -186,7 +179,7 @@ async function restart(repeat, event) {
     letter.classList.remove(...CORRECT_CLASS, ...WRONG_CLASS);
   });
   cursor.value = 0;
-  console.log('hei')
+  currentWordIndex.value = 0;
 }
 
 function clearClasses() {
@@ -226,7 +219,7 @@ function clearClasses() {
           v-for="(letter, letterIndex) in word"
           :ref="
             (el) => {
-              const lindex = parsedWords.slice(0, index).reduce((total, ch) => (total += ch.length), 0) + letterIndex;
+              const lindex = parsedWords.slice(0, index).reduce((total, ch) => (total += ch.length), 0) + letterIndex; // bruh
               letterRefs[lindex] = el;
             }
           "
@@ -245,7 +238,7 @@ function clearClasses() {
       <input class="hidden" ref="mobileInput" />
       <div class="flex"></div>
     </div>
-    <div class="flex justify-center mt-6">
+    <div class="mt-6 flex justify-center">
       <button @click="restart(false, $event)" class="button" title="next practice">
         <svg
           xmlns="http://www.w3.org/2000/svg"
